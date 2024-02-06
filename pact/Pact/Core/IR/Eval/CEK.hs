@@ -75,6 +75,7 @@ import Pact.Core.IR.Eval.Runtime
 import Pact.Core.Namespace
 import Pact.Core.DefPacts.Types
 import Pact.Core.SizeOf
+import Debug.Trace
 
 
 class CEKEval (step :: CEKStepKind) (b :: K.Type) (i :: K.Type) (m :: K.Type -> K.Type) | m -> b, m -> i where
@@ -1892,7 +1893,7 @@ eval purity benv term = do
       case v of
         VPactValue pv -> pure pv
         _ ->
-          throwExecutionError (view termInfo term) (EvalError "Evaluation did not reduce to a value")
+            throwExecutionError (view termInfo term) (EvalError "Evaluation did not reduce to a value")
 {-# SPECIALIZE eval
    :: Purity
    -> CoreBuiltinEnv
