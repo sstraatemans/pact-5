@@ -70,14 +70,24 @@ coreExpect info b cont handler _env = \case
     es <- getEvalState
     tryError (applyLamUnsafe provided [] Mt CEKNoHandler) >>= \case
       Right (EvalValue (VPactValue v2)) -> do
-        applyLamUnsafe expected [] Mt CEKNoHandler >>= \case
-          EvalValue (VPactValue v1) -> do
+        tryError (applyLamUnsafe expected [] Mt CEKNoHandler) >>= \case
+          Right (EvalValue (VPactValue v1)) -> do
             if v1 /= v2 then do
                 let v1s = prettyShowValue (VPactValue v1)
                     v2s = prettyShowValue (VPactValue v2)
                 returnCEKValue cont handler $ VLiteral $ LString $ "FAILURE: " <> msg <> " expected: " <> v1s <> ", received: " <> v2s
             else returnCEKValue cont handler (VLiteral (LString ("Expect: success " <> msg)))
-          _ -> returnCEK cont handler (VError "evaluation within expect did not return a pact value" info)
+          Right (VError errMsg _) -> do
+            putEvalState es
+            let errorMessage = "FAILURE: " <> msg <> " evaluation of actual failed with error message: " <> errMsg
+            returnCEK cont handler (VError errorMessage info)
+          Right _ -> do
+            let errorMessage = "FAILURE: " <> msg <> " evaluation of actual failed: evaluation reduced to a table reference or a closure"
+            returnCEK cont handler (VError errorMessage info)
+          Left caughtError -> do
+            putEvalState es
+            let errorMessage = "FAILURE: " <> msg <> " evaluation of actual failed with error message: " <> renderText caughtError
+            returnCEK cont handler (VError errorMessage info)
       Right (VError errMsg _) -> do
         putEvalState es
         returnCEKValue cont handler $ VString $ "FAILURE: " <> msg <> " evaluation of actual failed with error message: " <> errMsg
